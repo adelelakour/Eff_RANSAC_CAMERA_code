@@ -1,7 +1,6 @@
 #include "Model_PreProsessing.h"
 
 #include <iostream>
-
 #include <Eigen/Core>
 #include <algorithm>
 #include <utility>
@@ -10,10 +9,12 @@
 #include <list>
 #include <tuple>
 #include <string>
-
+#include <cmath>
 #include <filesystem>
-#include <pcl/common/distances.h>
 
+
+#include <pcl/octree/octree_search.h>
+#include <pcl/common/distances.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -26,6 +27,8 @@
 #include <pcl/segmentation/segment_differences.h>
 #include <pcl/registration/correspondence_estimation.h>
 #include <AndreiUtils/utilsString.h>
+#include <AndreiUtils/classes/RandomNumberGenerator.hpp>
+
 
 using namespace AndreiUtils;
 using namespace Eigen;
@@ -94,16 +97,16 @@ float Angle_between_two_vectors ( Eigen::Vector3f U, Eigen::Vector3f V)
 
 
 
-/*
-inline double Euclidean_Distance_two_Vectors(Eigen::Vector3f A, Eigen::Vector3f B) {
+
+double Euclidean_Distance_two_Vectors(pcl::PointXYZLNormal A, pcl::PointXYZLNormal B) {
     double Distance = std::sqrt(
-            std::pow(B.x() - A.x(), 2) +
-            std::pow(B.y() - A.y(), 2) +
-            std::pow(B.z() - A.z(), 2)
+            std::pow(B.x - A.x, 2) +
+            std::pow(B.y - A.y, 2) +
+            std::pow(B.z - A.z, 2)
     );
     return Distance;
 }
-*/
+
 
 
 Eigen::Vector3f Compute_the_descriptor (pcl::PointXYZLNormal U, pcl::PointXYZLNormal V)
@@ -126,15 +129,17 @@ Eigen::Vector3f Compute_the_descriptor (pcl::PointXYZLNormal U, pcl::PointXYZLNo
 
 
 
-OuterMap Compute_HashTable(float radius, double pointSphereRelativeTolerance, std::string path_to_models) {
+OuterMap Compute_HashTable(float Offline_radius_preProcessed, double tolerance_preProcessed, float octree_resolution, std::string path_to_models) {
     OuterMap myHashTable;       // Cell is a tuple of (pair) and (model Name)
     myHashTable.clear();
 
-    pcl::PointCloud<pcl::PointXYZLNormal>::Ptr Model_Cloud(new pcl::PointCloud<pcl::PointXYZLNormal>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr Model_Cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
 
-    pcl::PointXYZLNormal U_XYZNorm;
-    pcl::PointXYZLNormal V_XYZNorm;
+    pcl::PointXYZLNormal PointA_XYZLNormal;
+    pcl::PointXYZLNormal PointB_XYZLNormal;
+
+
     Eigen::Vector3f N_u = Eigen::Vector3f::Zero();
     Eigen::Vector3f N_v = Eigen::Vector3f::Zero();
     Eigen::Vector3f P_u = Eigen::Vector3f::Zero();
@@ -162,64 +167,79 @@ OuterMap Compute_HashTable(float radius, double pointSphereRelativeTolerance, st
 
         pcl::io::loadPLYFile(file_path, *Model_Cloud);
 
-        std::cout << "size before voxelgrid : " << Model_Cloud->size() << std::endl;
+        pcl::PointCloud<pcl::Normal>::Ptr Model_Normals(new pcl::PointCloud<pcl::Normal>);
+        pcl::PointCloud<pcl::PointXYZLNormal>::Ptr Model_with_norm_estimation(
+                new pcl::PointCloud<pcl::PointXYZLNormal>);
 
-        pcl::VoxelGrid<pcl::PointXYZLNormal> sor;
-        sor.setInputCloud(Model_Cloud);
-        sor.setLeafSize(0.001f, 0.001f, 0.001f);
-        sor.filter(*Model_Cloud);
-        std::cout << "size after voxelgrid  : " << Model_Cloud->size() << std::endl;
 
-        std::cout << "A new Model is loaded" << std::endl;
+        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+        ne.setInputCloud(Model_Cloud);
+        pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+        ne.setSearchMethod(tree);
+        ne.setRadiusSearch(5 * Offline_radius_preProcessed);
+        ne.compute(*Model_Normals);
+        pcl::concatenateFields(*Model_Cloud, *Model_Normals,
+                               *Model_with_norm_estimation);
 
-        pcl::KdTreeFLANN<pcl::PointXYZLNormal> kdtree_of_Model_Cloud;
-        kdtree_of_Model_Cloud.setInputCloud(Model_Cloud);
 
-        for (size_t i = 0; i < Model_Cloud->size(); ++i) {
-            U_XYZNorm = Model_Cloud->at(i);
+        for (int i = 0; i < Model_with_norm_estimation->size(); ++i) {
 
-            P_u = Eigen::Vector3f(U_XYZNorm.x, U_XYZNorm.y, U_XYZNorm.z);
-            N_u = Eigen::Vector3f(U_XYZNorm.normal_x, U_XYZNorm.normal_y, U_XYZNorm.normal_z);
+            int index_of_pointA = int(AndreiUtils::double01Sampler.sample() * Model_with_norm_estimation->size());
+            PointA_XYZLNormal = Model_with_norm_estimation->points[index_of_pointA];
 
-            kdtree_of_Model_Cloud.radiusSearch(U_XYZNorm, radius, point_indices, point_distances);
-            // std::cout << "number of points within this sphere is : " << point_indices.size() << std::endl;
+            Eigen::Vector3f A_p = Eigen::Vector3f(PointA_XYZLNormal.x, PointA_XYZLNormal.y, PointA_XYZLNormal.z);
+            Eigen::Vector3f A_n = Eigen::Vector3f(PointA_XYZLNormal.normal_x, PointA_XYZLNormal.normal_y,
+                                                  PointA_XYZLNormal.normal_z);
 
-            for (int point_index : point_indices) {
-                V_XYZNorm = Model_Cloud->at(point_index);
+            pcl::KdTreeFLANN<pcl::PointXYZLNormal> kdtree_PointA;
+            kdtree_PointA.setInputCloud(Model_with_norm_estimation);
 
-                pointDistance = euclideanDistance(U_XYZNorm, V_XYZNorm);
-                // Tolerance for considering a point on the perimeter
-                if (pointDistance < radius * (1 + pointSphereRelativeTolerance) &&
-                    pointDistance > radius * (1 - pointSphereRelativeTolerance)) {
-                    // std::cout << "I found a Pair in " << Model_Name << std::endl;
-                    P_v = Eigen::Vector3f(V_XYZNorm.x,
-                                          V_XYZNorm.y,
-                                          V_XYZNorm.z);
 
-                    N_v = Eigen::Vector3f(V_XYZNorm.normal_x,
-                                          V_XYZNorm.normal_y,
-                                          V_XYZNorm.normal_z);
+            // create a KD-tree (d search) around PointA_XYZLNormal
+            std::vector<int> pointIdxKNNSearch_preProcessed;
+            std::vector<float> pointKNNSquaredDistance_preProcessed;
+            pcl::PointCloud<pcl::PointXYZLNormal>::Ptr neighbors_of_PointA(new pcl::PointCloud<pcl::PointXYZLNormal>);
 
-                    Hash_key[0] = Angle_between_two_vectors(N_u, N_v);
-                    Hash_key[1] = Angle_between_two_vectors(N_u, P_v-P_u);
-                    Hash_key[2] = Angle_between_two_vectors(N_v, P_u-P_v);
 
-                    Detected_pairs.first = U_XYZNorm;
-                    Detected_pairs.second = V_XYZNorm;
+            if (kdtree_PointA.radiusSearch(PointA_XYZLNormal, Offline_radius_preProcessed,
+                                           pointIdxKNNSearch_preProcessed, pointKNNSquaredDistance_preProcessed) > 0) {
 
-                    string hashKeyString = fromVectorToString(Hash_key);
-                    auto findRequest = myHashTable.find(hashKeyString);
-                    if (findRequest != myHashTable.end()) {    // it exists
-                        findRequest->second[Model_Name].push_back(Detected_pairs);
-                        // std::cout << "A new entry is added to existing key ++++++++++++++++++++++++++++:" << std::endl;
-                    } else {
-                        InnerMap newData;
-                        newData[Model_Name].push_back(Detected_pairs);
-                        myHashTable[hashKeyString] = newData;
-                        // std::cout << "A new key is added : " << Hash_key.transpose() << std::endl;
+                for (int i = 0; i < pointIdxKNNSearch_preProcessed.size(); ++i) {
+                    auto PointInRegion = Model_with_norm_estimation->points[pointIdxKNNSearch_preProcessed[i]];
+                    if (Euclidean_Distance_two_Vectors(PointA_XYZLNormal, PointInRegion) >
+                        (Offline_radius_preProcessed - tolerance_preProcessed) &&
+                        Euclidean_Distance_two_Vectors(PointA_XYZLNormal, PointInRegion) <
+                        (Offline_radius_preProcessed + tolerance_preProcessed)) {
+                        PointB_XYZLNormal = PointInRegion;
+                        Eigen::Vector3f B_p;
+                        Eigen::Vector3f B_n;
+
+                        B_p = {PointB_XYZLNormal.x, PointB_XYZLNormal.y, PointB_XYZLNormal.z};
+                        B_n = {PointB_XYZLNormal.normal_x, PointB_XYZLNormal.normal_y, PointB_XYZLNormal.normal_z};
+
+
+                        Hash_key[0] = Angle_between_two_vectors(A_n, B_n);
+                        Hash_key[1] = Angle_between_two_vectors(A_n, B_p - A_p);
+                        Hash_key[2] = Angle_between_two_vectors(B_n, A_p - B_p);
+
+                        Detected_pairs.first = PointA_XYZLNormal;
+                        Detected_pairs.second = PointB_XYZLNormal;
+
+                        string hashKeyString = fromVectorToString(Hash_key);
+
+                        //cout << "HashMap" << hashKeyString << endl;
+
+                        auto findRequest = myHashTable.find(hashKeyString);
+                        if (findRequest != myHashTable.end()) {    // it exists
+                            findRequest->second[Model_Name].push_back(Detected_pairs);
+                            // std::cout << "A new entry is added to existing key ++++++++++++++++++++++++++++:" << std::endl;
+                        } else {
+                            InnerMap newData;
+                            newData[Model_Name].push_back(Detected_pairs);
+                            myHashTable[hashKeyString] = newData;
+                        }
                     }
 
-                    //break;
                 }
             }
         }
@@ -228,17 +248,6 @@ OuterMap Compute_HashTable(float radius, double pointSphereRelativeTolerance, st
     std::cout << "Size of myHashTable is: " << myHashTable.size() << std::endl;
 
 
-/*    for (auto const &entity : myHashTable) {
-        auto Cell = entity.second;
-        if (std::get<0>(Cell).size() > 2) {
-            std::cout << "I found big cell" << std::endl;
-        }
-    }*/
-    std::cout << "NNNNNNN" << std::endl;
-
-
     return myHashTable;
 }
-
-
 

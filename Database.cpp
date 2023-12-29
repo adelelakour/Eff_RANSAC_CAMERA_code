@@ -8,8 +8,8 @@ void Serialize_hashMAP (OuterMap hashMap_to_serialize, std::string FileName );
 OuterMap Deserialize_hashMAP (std::string FileName);
 
 
-OuterMap DB::create_hashMap(float radius, double pointSphereRelativeTolerance, std::string path_to_models) {
-    return Compute_HashTable(radius, pointSphereRelativeTolerance, path_to_models);
+OuterMap DB::create_hashMap(float radius, double pointSphereRelativeTolerance, float Octree_resolution, std::string path_to_models) {
+    return Compute_HashTable(radius, pointSphereRelativeTolerance, Octree_resolution, path_to_models);
 }
 
 
@@ -22,5 +22,4 @@ OuterMap DB::to_deserialize_hashMap(std::string FileName) {
     OuterMap d_map = Deserialize_hashMAP(FileName);
     return d_map;
 }
-
 

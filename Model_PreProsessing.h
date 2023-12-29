@@ -51,12 +51,12 @@ std::string fromVectorToString(Eigen::Vector3f const &vector);
 
 
 float Angle_between_two_vectors ( Eigen::Vector3f U, Eigen::Vector3f V);
+double Euclidean_Distance_two_Vectors(pcl::PointXYZLNormal A, pcl::PointXYZLNormal B);
 
 
 
 Eigen::Vector3f Compute_the_descriptor (pcl::PointXYZLNormal U, pcl::PointXYZLNormal V);
-OuterMap Compute_HashTable(float radius, double pointSphereRelativeTolerance, std::string path_to_models);
+OuterMap Compute_HashTable(float d, double pointSphereRelativeTolerance, float octree_resolution, std::string path_to_models);
 bool serializeHashMap(const OuterMap& data, const std::string& filename);
 #endif // MY_HEADER_H
-
 

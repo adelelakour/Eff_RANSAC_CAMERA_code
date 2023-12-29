@@ -1,0 +1,20 @@
+# ninja log v5
+11897	15111	1702981691158429211	Cereal_version	5a836fd6918e9bd2
+1	286	1703631914391451222	build.ninja	7cc1969affd24085
+6	7515	1702981208306342723	CMakeFiles/Cereal_version.dir/SerializeDeserialize.cpp.o	626156f9106e71f
+6	8340	1702981209130334812	CMakeFiles/ObjectModel.dir/Model_PreProsessing.cpp.o	4d686ff8f438f44b
+5	11896	1702981687942453747	CMakeFiles/Cereal_version.dir/main.cpp.o	fc8eaa902c68f259
+8341	8566	1702981209358332627	libObjectModel.a	bd9faf19d199ae15
+6	7323	1702981208114344566	CMakeFiles/Cereal_version.dir/Database.cpp.o	da1d3066792eb0ef
+6	6484	1703632336963784449	CMakeFiles/Cereal_version.dir/Database.cpp.o	da1d3066792eb0ef
+6	6631	1703632337111787422	CMakeFiles/Cereal_version.dir/SerializeDeserialize.cpp.o	626156f9106e71f
+5	8071	1703632338547816245	CMakeFiles/ObjectModel.dir/Model_PreProsessing.cpp.o	4d686ff8f438f44b
+8071	8316	1703632338791821139	libObjectModel.a	852af399bf0162b3
+6	12433	1703632342907903481	CMakeFiles/Cereal_version.dir/main.cpp.o	fc8eaa902c68f259
+12433	16119	1703632346591976854	Cereal_version	5a836fd6918e9bd2
+6	12114	1703847253312569329	CMakeFiles/Cereal_version.dir/main.cpp.o	fc8eaa902c68f259
+12114	15583	1703847256784429096	Cereal_version	5a836fd6918e9bd2
+5	11579	1703848435992592201	CMakeFiles/Cereal_version.dir/main.cpp.o	fc8eaa902c68f259
+11579	14721	1703848439136526907	Cereal_version	5a836fd6918e9bd2
+5	11583	1703848884412078745	CMakeFiles/Cereal_version.dir/main.cpp.o	fc8eaa902c68f259
+11584	14739	1703848887568022051	Cereal_version	5a836fd6918e9bd2

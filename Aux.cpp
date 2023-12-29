@@ -35,6 +35,7 @@ pcl::PointXYZ computeCentroidOfVoxel(const pcl::PointCloud<pcl::PointXYZ>& vecOf
 }
 
 
+
 using namespace std::chrono_literals;
 
 class OctreeViewer
